@@ -17,14 +17,12 @@ import com.example.todoapp.domain.model.Todo
 import com.example.todoapp.domain.model.TodoPriority
 import com.example.todoapp.domain.model.TodoSyncStatus
 import io.mockk.*
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import org.junit.Assert.*
-import org.junit.Ignore
 import org.junit.runner.RunWith
 import java.util.Date
 
@@ -38,7 +36,7 @@ import java.util.Date
  * что позволяет тестировать реальную логику работы с БД без использования файлов.
  */
 @RunWith(AndroidJUnit4::class)
-@Ignore("Убрать после реализации тестов из ДЗ")
+// @Ignore("Убрать после реализации тестов из ДЗ")
 class Task1_SQLiteMockTest {
 
     private lateinit var database: TodoDatabase
@@ -51,23 +49,36 @@ class Task1_SQLiteMockTest {
 
     @Before
     fun setup() {
-        // TODO: Получить контекст для тестов через ApplicationProvider
+        // Получить контекст для тестов через ApplicationProvider
+        context = ApplicationProvider.getApplicationContext()
         
-        // TODO: Создать in-memory базу данных Room через Room.inMemoryDatabaseBuilder()
-        // Подсказка: нужно указать контекст, класс БД и вызвать build()
+        // Создать in-memory базу данных Room через Room.inMemoryDatabaseBuilder()
+        database = Room.inMemoryDatabaseBuilder(
+            context,
+            TodoDatabase::class.java
+        ).build()
         
-        // TODO: Получить DAO из созданной базы данных
+        // Получить DAO из созданной базы данных
+        todoDao = database.todoDao()
         
-        // TODO: Создать mock объекты для сетевых компонентов (ApiService, NetworkManager, IdlingResource)
+        // Создать mock объекты для сетевых компонентов
+        mockApiService = mockk(relaxed = true)
+        mockNetworkManager = mockk(relaxed = true)
+        mockIdlingResource = mockk(relaxed = true)
         
-        // TODO: Создать репозиторий с реальным DAO и мок-сервисами
-        
-        fail("Setup not implemented - реализуйте настройку тестового окружения")
+        // Создать репозиторий с реальным DAO и мок-сервисами
+        repository = CachedTodoRepository(
+            todoDao = todoDao,
+            apiService = mockApiService,
+            networkManager = mockNetworkManager,
+            idlingResource = mockIdlingResource
+        )
     }
     
     @After
     fun tearDown() {
-        // TODO: Закрыть базу данных после каждого теста для освобождения ресурсов
+        // Закрыть базу данных после каждого теста для освобождения ресурсов
+        database.close()
     }
 
     /**
@@ -81,7 +92,63 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test getAllTodos returns all tasks from database`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте получение всех задач из in-memory БД")
+        // Arrange: Вставить 3 тестовые задачи в in-memory БД
+        val task1 = TodoEntity(
+            id = 1L,
+            title = "Task 1",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        val task2 = TodoEntity(
+            id = 2L,
+            title = "Task 2",
+            isCompleted = true,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote2"
+        )
+        val task3 = TodoEntity(
+            id = 3L,
+            title = "Task 3",
+            isCompleted = false,
+            priority = Priority.LOW,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.PENDING,
+            remoteId = null
+        )
+        
+        todoDao.insertTodo(task1)
+        todoDao.insertTodo(task2)
+        todoDao.insertTodo(task3)
+        
+        // Act: Получить все задачи через репозиторий
+        val result = repository.getAllTodos().first()
+        
+        // Assert: Проверить что получили все 3 задачи
+        assertEquals(3, result.size)
+        
+        // Проверить корректность преобразования Entity в Domain модели
+        val domainTask1 = result.find { it.id == 1L }!!
+        assertEquals("Task 1", domainTask1.title)
+        assertEquals(false, domainTask1.isCompleted)
+        assertEquals(TodoPriority.NORMAL, domainTask1.priority)
+        assertEquals(TodoSyncStatus.SYNCED, domainTask1.syncStatus)
+        
+        val domainTask2 = result.find { it.id == 2L }!!
+        assertEquals("Task 2", domainTask2.title)
+        assertEquals(true, domainTask2.isCompleted)
+        assertEquals(TodoPriority.HIGH, domainTask2.priority)
+        
+        val domainTask3 = result.find { it.id == 3L }!!
+        assertEquals("Task 3", domainTask3.title)
+        assertEquals(TodoSyncStatus.PENDING, domainTask3.syncStatus)
     }
 
     /**
@@ -94,7 +161,36 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test insertTodo saves locally when no network`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте создание задачи без сети")
+        // Arrange: Настроить отсутствие сети
+        every { mockNetworkManager.isNetworkAvailable() } returns false
+        
+        val newTodo = Todo(
+            id = 0L, // 0 для новой задачи
+            title = "New offline task",
+            isCompleted = false,
+            priority = TodoPriority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = TodoSyncStatus.SYNCED, // Будет изменен на PENDING
+            remoteId = null
+        )
+        
+        // Act: Создать задачу без сети
+        repository.insertTodo(newTodo)
+        
+        // Assert: Проверить что задача сохранена локально
+        val allTodos = repository.getAllTodos().first()
+        assertEquals(1, allTodos.size)
+        
+        val savedTodo = allTodos.first()
+        assertEquals("New offline task", savedTodo.title)
+        assertEquals(false, savedTodo.isCompleted)
+        assertEquals(TodoPriority.NORMAL, savedTodo.priority)
+        assertEquals(TodoSyncStatus.PENDING, savedTodo.syncStatus) // Должен быть PENDING
+        assertNull(savedTodo.remoteId) // Нет remoteId при offline
+        
+        // Проверить что API не вызывался
+        coVerify(exactly = 0) { mockApiService.createTodo(any()) }
     }
 
     /**
@@ -107,7 +203,58 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test searchTodos returns filtered tasks`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте поиск задач")
+        // Arrange: Создать тестовые задачи с разными названиями
+        val task1 = TodoEntity(
+            id = 1L,
+            title = "Buy groceries",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        val task2 = TodoEntity(
+            id = 2L,
+            title = "Write KOTLIN code",
+            isCompleted = false,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote2"
+        )
+        val task3 = TodoEntity(
+            id = 3L,
+            title = "Call mom",
+            isCompleted = true,
+            priority = Priority.LOW,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote3"
+        )
+        
+        todoDao.insertTodo(task1)
+        todoDao.insertTodo(task2)
+        todoDao.insertTodo(task3)
+        
+        // Act: Поиск по ключевому слову (регистронезависимый)
+        val searchResults = repository.searchTodos("kotlin").first()
+        
+        // Assert: Проверить что найдена только одна задача содержащая "kotlin"
+        assertEquals(1, searchResults.size)
+        assertEquals("Write KOTLIN code", searchResults.first().title)
+        assertEquals(2L, searchResults.first().id)
+        
+        // Тест поиска другого слова
+        val groceryResults = repository.searchTodos("Buy").first()
+        assertEquals(1, groceryResults.size)
+        assertEquals("Buy groceries", groceryResults.first().title)
+        
+        // Тест поиска несуществующего слова
+        val emptyResults = repository.searchTodos("nonexistent").first()
+        assertEquals(0, emptyResults.size)
     }
 
     /**
@@ -120,7 +267,46 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test toggleCompletion changes task status`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте изменение статуса задачи")
+        // Arrange: Создать задачу в состоянии "не выполнено"
+        val originalTask = TodoEntity(
+            id = 1L,
+            title = "Test task",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(System.currentTimeMillis() - 60000), // Час назад
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        
+        todoDao.insertTodo(originalTask)
+        
+        // Настроить отсутствие сети для проверки что статус станет PENDING
+        every { mockNetworkManager.isNetworkAvailable() } returns false
+        
+        // Act: Переключить статус выполнения
+        repository.toggleCompletion(1L)
+        
+        // Assert: Проверить что статус изменился
+        val updatedTodos = repository.getAllTodos().first()
+        assertEquals(1, updatedTodos.size)
+        
+        val updatedTodo = updatedTodos.first()
+        assertEquals(true, updatedTodo.isCompleted) // Статус изменился на выполнено
+        assertEquals(TodoSyncStatus.PENDING, updatedTodo.syncStatus) // Стал PENDING
+        assertTrue("Время обновления должно быть позже", 
+            updatedTodo.updatedAt.time > originalTask.updatedAt.time)
+        
+        // Проверить что API не вызывался (нет сети)
+        coVerify(exactly = 0) { mockApiService.updateTodo(any(), any()) }
+        
+        // Act: Переключить статус обратно
+        repository.toggleCompletion(1L)
+        
+        // Assert: Проверить что статус снова изменился
+        val reUpdatedTodos = repository.getAllTodos().first()
+        val reUpdatedTodo = reUpdatedTodos.first()
+        assertEquals(false, reUpdatedTodo.isCompleted) // Статус снова стал "не выполнено"
     }
 
     /**
@@ -132,7 +318,77 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test getStatistics returns correct counts`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте получение статистики")
+        // Arrange: Создать смешанный набор задач
+        val activeTask1 = TodoEntity(
+            id = 1L,
+            title = "Active task 1",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        val activeTask2 = TodoEntity(
+            id = 2L,
+            title = "Active task 2",
+            isCompleted = false,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.PENDING,
+            remoteId = null
+        )
+        val completedTask1 = TodoEntity(
+            id = 3L,
+            title = "Completed task 1",
+            isCompleted = true,
+            priority = Priority.LOW,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote3"
+        )
+        val completedTask2 = TodoEntity(
+            id = 4L,
+            title = "Completed task 2",
+            isCompleted = true,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote4"
+        )
+        val completedTask3 = TodoEntity(
+            id = 5L,
+            title = "Completed task 3",
+            isCompleted = true,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.PENDING,
+            remoteId = null
+        )
+        
+        // Добавить все задачи в БД
+        todoDao.insertTodo(activeTask1)
+        todoDao.insertTodo(activeTask2)
+        todoDao.insertTodo(completedTask1)
+        todoDao.insertTodo(completedTask2)
+        todoDao.insertTodo(completedTask3)
+        
+        // Act: Получить статистику
+        val activeCount = repository.getActiveCount().first()
+        val completedCount = repository.getCompletedCount().first()
+        
+        // Assert: Проверить правильность подсчетов
+        assertEquals(2, activeCount) // 2 активные задачи
+        assertEquals(3, completedCount) // 3 выполненные задачи
+        
+        // Проверить общее количество
+        val allTodos = repository.getAllTodos().first()
+        assertEquals(5, allTodos.size)
+        assertEquals(activeCount + completedCount, allTodos.size)
     }
 
     /**
@@ -144,7 +400,82 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test deleteCompletedTodos removes only completed tasks`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте удаление выполненных задач")
+        // Arrange: Создать смешанный набор задач
+        val activeTask1 = TodoEntity(
+            id = 1L,
+            title = "Active task 1",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        val activeTask2 = TodoEntity(
+            id = 2L,
+            title = "Active task 2",
+            isCompleted = false,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.PENDING,
+            remoteId = null
+        )
+        val completedTask1 = TodoEntity(
+            id = 3L,
+            title = "Completed task 1",
+            isCompleted = true,
+            priority = Priority.LOW,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote3"
+        )
+        val completedTask2 = TodoEntity(
+            id = 4L,
+            title = "Completed task 2",
+            isCompleted = true,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote4"
+        )
+        
+        // Добавить все задачи в БД
+        todoDao.insertTodo(activeTask1)
+        todoDao.insertTodo(activeTask2)
+        todoDao.insertTodo(completedTask1)
+        todoDao.insertTodo(completedTask2)
+        
+        // Проверить начальное состояние
+        val initialTodos = repository.getAllTodos().first()
+        assertEquals(4, initialTodos.size)
+        
+        // Act: Удалить выполненные задачи
+        repository.deleteCompletedTodos()
+        
+        // Assert: Проверить что остались только активные задачи
+        val remainingTodos = repository.getAllTodos().first()
+        assertEquals(2, remainingTodos.size)
+        
+        // Проверить что остались правильные задачи
+        val remainingTitles = remainingTodos.map { it.title }.toSet()
+        assertTrue(remainingTitles.contains("Active task 1"))
+        assertTrue(remainingTitles.contains("Active task 2"))
+        assertFalse(remainingTitles.contains("Completed task 1"))
+        assertFalse(remainingTitles.contains("Completed task 2"))
+        
+        // Проверить что все оставшиеся задачи активные
+        remainingTodos.forEach { todo ->
+            assertEquals(false, todo.isCompleted)
+        }
+        
+        // Проверить статистику после удаления
+        val activeCount = repository.getActiveCount().first()
+        val completedCount = repository.getCompletedCount().first()
+        assertEquals(2, activeCount)
+        assertEquals(0, completedCount)
     }
 
     /**
@@ -155,6 +486,81 @@ class Task1_SQLiteMockTest {
      */
     @Test
     fun `test getTodosByPriority returns filtered tasks`() = runTest {
-        fail("Test not implemented - ДЗ: Реализуйте фильтрацию по приоритету")
+        // Arrange: Создать задачи с разными приоритетами
+        val highPriorityTask1 = TodoEntity(
+            id = 1L,
+            title = "High priority task 1",
+            isCompleted = false,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote1"
+        )
+        val highPriorityTask2 = TodoEntity(
+            id = 2L,
+            title = "High priority task 2",
+            isCompleted = true,
+            priority = Priority.HIGH,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.PENDING,
+            remoteId = null
+        )
+        val normalPriorityTask = TodoEntity(
+            id = 3L,
+            title = "Normal priority task",
+            isCompleted = false,
+            priority = Priority.NORMAL,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote3"
+        )
+        val lowPriorityTask = TodoEntity(
+            id = 4L,
+            title = "Low priority task",
+            isCompleted = true,
+            priority = Priority.LOW,
+            createdAt = Date(),
+            updatedAt = Date(),
+            syncStatus = SyncStatus.SYNCED,
+            remoteId = "remote4"
+        )
+        
+        // Добавить все задачи в БД
+        todoDao.insertTodo(highPriorityTask1)
+        todoDao.insertTodo(highPriorityTask2)
+        todoDao.insertTodo(normalPriorityTask)
+        todoDao.insertTodo(lowPriorityTask)
+        
+        // Act & Assert: Тестировать фильтрацию по каждому приоритету
+        
+        // Тест HIGH приоритета
+        val highPriorityTodos = repository.getTodosByPriority(TodoPriority.HIGH).first()
+        assertEquals(2, highPriorityTodos.size)
+        highPriorityTodos.forEach { todo ->
+            assertEquals(TodoPriority.HIGH, todo.priority)
+        }
+        val highTitles = highPriorityTodos.map { it.title }.toSet()
+        assertTrue(highTitles.contains("High priority task 1"))
+        assertTrue(highTitles.contains("High priority task 2"))
+        
+        // Тест NORMAL приоритета
+        val normalPriorityTodos = repository.getTodosByPriority(TodoPriority.NORMAL).first()
+        assertEquals(1, normalPriorityTodos.size)
+        assertEquals("Normal priority task", normalPriorityTodos.first().title)
+        assertEquals(TodoPriority.NORMAL, normalPriorityTodos.first().priority)
+        
+        // Тест LOW приоритета
+        val lowPriorityTodos = repository.getTodosByPriority(TodoPriority.LOW).first()
+        assertEquals(1, lowPriorityTodos.size)
+        assertEquals("Low priority task", lowPriorityTodos.first().title)
+        assertEquals(TodoPriority.LOW, lowPriorityTodos.first().priority)
+        
+        // Проверить что общее количество задач правильное
+        val totalHighNormalLow = highPriorityTodos.size + normalPriorityTodos.size + lowPriorityTodos.size
+        val allTodos = repository.getAllTodos().first()
+        assertEquals(totalHighNormalLow, allTodos.size)
     }
 }

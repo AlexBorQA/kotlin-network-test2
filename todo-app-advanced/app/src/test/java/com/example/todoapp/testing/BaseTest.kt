@@ -1,7 +1,7 @@
 package com.example.todoapp.testing
 
-import kotlinx.coroutines.test.TestCoroutineScope
 import kotlinx.coroutines.test.runTest
+import kotlin.time.Duration.Companion.seconds
 import org.junit.After
 import org.junit.Before
 
@@ -12,7 +12,7 @@ import org.junit.Before
 abstract class BaseTest {
     
     companion object {
-        const val DEFAULT_TIMEOUT = 5000L
+        val DEFAULT_TIMEOUT = 5.seconds
     }
     
     @Before
@@ -28,7 +28,7 @@ abstract class BaseTest {
     /**
      * Обертка для runTest с таймаутом
      */
-    protected fun runBlockingTest(block: suspend TestCoroutineScope.() -> Unit) = runTest(timeout = DEFAULT_TIMEOUT) {
+    protected fun runBlockingTest(block: suspend () -> Unit) = runTest(timeout = DEFAULT_TIMEOUT) {
         block()
     }
 }

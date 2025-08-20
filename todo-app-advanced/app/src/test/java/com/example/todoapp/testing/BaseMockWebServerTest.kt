@@ -4,10 +4,15 @@ import com.example.todoapp.data.api.TodoApiService
 import com.example.todoapp.data.model.TodoDto
 import com.google.gson.Gson
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 /**
  * Базовый класс для тестов с MockWebServer
@@ -50,21 +55,33 @@ abstract class BaseMockWebServerTest : BaseTest() {
      * Добавляет в очередь список TodoDto как успешный ответ
      */
     protected fun enqueueTodos(todos: List<TodoDto>) {
-        mockWebServer.enqueueSuccess(gson.toJson(todos))
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(todos))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
     }
     
     /**
      * Добавляет в очередь одну TodoDto как успешный ответ
      */
     protected fun enqueueTodo(todo: TodoDto) {
-        mockWebServer.enqueueSuccess(gson.toJson(todo))
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(todo))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
     }
     
     /**
      * Добавляет в очередь TodoDto как ответ Created (201)
      */
     protected fun enqueueCreatedTodo(todo: TodoDto) {
-        mockWebServer.enqueueCreated(gson.toJson(todo))
+        val response = MockResponse()
+            .setResponseCode(201)
+            .setBody(gson.toJson(todo))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
     }
     
     /**
@@ -79,21 +96,31 @@ abstract class BaseMockWebServerTest : BaseTest() {
      * Добавляет в очередь ошибку 404
      */
     protected fun enqueue404() {
-        mockWebServer.enqueueError(404, "Not Found")
+        val response = MockResponse()
+            .setResponseCode(404)
+            .setBody("Not Found")
+        mockWebServer.enqueue(response)
     }
     
     /**
      * Добавляет в очередь ошибку 500
      */
     protected fun enqueue500() {
-        mockWebServer.enqueueError(500, "Internal Server Error")
+        val response = MockResponse()
+            .setResponseCode(500)
+            .setBody("Internal Server Error")
+        mockWebServer.enqueue(response)
     }
     
     /**
      * Добавляет в очередь таймаут
      */
     protected fun enqueueTimeout(delayMs: Long = 1000) {
-        mockWebServer.enqueueWithDelay("{}", delayMs)
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody("{}")
+            .setBodyDelay(delayMs, TimeUnit.MILLISECONDS)
+        mockWebServer.enqueue(response)
     }
     
     /**
