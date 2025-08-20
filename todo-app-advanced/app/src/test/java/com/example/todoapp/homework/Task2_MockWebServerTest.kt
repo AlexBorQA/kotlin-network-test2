@@ -31,25 +31,41 @@ import java.util.concurrent.TimeUnit
  * 
  * Документация MockWebServer: https://github.com/square/okhttp/tree/master/mockwebserver
  */
-@Ignore("Убрать после реализации тестов из ДЗ")
+// @Ignore("Убрать после реализации тестов из ДЗ")
 class Task2_MockWebServerTest {
 
-    // TODO: Объявите необходимые переменные для работы с MockWebServer и API
+    private lateinit var mockWebServer: MockWebServer
+    private lateinit var apiService: TodoApiService
+    private lateinit var gson: Gson
 
     @Before
     fun setup() {
-        // TODO: Инициализируйте и настройте MockWebServer
-        // TODO: Создайте Retrofit с необходимыми настройками
-        // TODO: Получите экземпляр TodoApiService
+        // Инициализируем и настраиваем MockWebServer
+        mockWebServer = MockWebServer()
+        mockWebServer.start()
         
-        fail("TODO: Реализуйте инициализацию тестового окружения")
+        // Создаем Gson для сериализации
+        gson = Gson()
+        
+        // Создаем Retrofit с необходимыми настройками
+        val retrofit = Retrofit.Builder()
+            .baseUrl(mockWebServer.url("/"))
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(OkHttpClient.Builder()
+                .connectTimeout(1, TimeUnit.SECONDS)
+                .readTimeout(1, TimeUnit.SECONDS)
+                .writeTimeout(1, TimeUnit.SECONDS)
+                .build())
+            .build()
+        
+        // Получаем экземпляр TodoApiService
+        apiService = retrofit.create(TodoApiService::class.java)
     }
 
     @After
     fun tearDown() {
-        // TODO: Корректно завершите работу MockWebServer
-        
-        fail("TODO: Реализуйте очистку ресурсов")
+        // Корректно завершаем работу MockWebServer
+        mockWebServer.shutdown()
     }
 
     /**
@@ -66,13 +82,40 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test GET all todos returns list of tasks`() = runTest {
-        // TODO: Создать тестовые данные - список из 3 TodoDto
-        // TODO: Настроить MockWebServer для возврата этих данных
-        // TODO: Выполнить запрос через apiService
-        // TODO: Проверить полученный результат
-        // TODO: Проверить параметры отправленного запроса
+        // Arrange: Создать тестовые данные - список из 3 TodoDto
+        val currentTime = System.currentTimeMillis()
+        val testTodos = listOf(
+            TodoDto(id = "1", title = "Task 1", completed = false, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = "2", title = "Task 2", completed = true, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = "3", title = "Task 3", completed = false, userId = 2, createdAt = currentTime, updatedAt = currentTime)
+        )
         
-        fail("Test not implemented - ДЗ: Реализуйте тест GET запроса")
+        // Настроить MockWebServer для возврата этих данных
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(testTodos))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
+        
+        // Act: Выполнить запрос через apiService
+        val result = apiService.getAllTodos()
+        
+        // Assert: Проверить полученный результат
+        assertTrue(result.isSuccessful)
+        val todos = result.body()
+        assertNotNull(todos)
+        assertEquals(3, todos!!.size)
+        assertEquals("Task 1", todos[0].title)
+        assertEquals(false, todos[0].completed)
+        assertEquals("Task 2", todos[1].title)
+        assertEquals(true, todos[1].completed)
+        assertEquals("Task 3", todos[2].title)
+        assertEquals(2, todos[2].userId)
+        
+        // Проверить параметры отправленного запроса
+        val request = mockWebServer.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/todos", request.path)
     }
 
     /**
@@ -86,13 +129,41 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test GET todo by id returns single task`() = runTest {
-        // TODO: Создать тестовую задачу с конкретным ID
-        // TODO: Настроить ответ сервера
-        // TODO: Выполнить запрос по ID
-        // TODO: Проверить полученную задачу
-        // TODO: Проверить путь запроса
+        // Arrange: Создать тестовую задачу с конкретным ID
+        val testId = "42"
+        val currentTime = System.currentTimeMillis()
+        val testTodo = TodoDto(
+            id = testId, 
+            title = "Specific task", 
+            completed = false, 
+            userId = 1,
+            createdAt = currentTime,
+            updatedAt = currentTime
+        )
         
-        fail("Test not implemented - ДЗ: Реализуйте GET запрос задачи по ID")
+        // Настроить ответ сервера
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(testTodo))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
+        
+        // Act: Выполнить запрос по ID
+        val result = apiService.getTodoById(testId)
+        
+        // Assert: Проверить полученную задачу
+        assertTrue(result.isSuccessful)
+        val todo = result.body()
+        assertNotNull(todo)
+        assertEquals(testId, todo!!.id)
+        assertEquals("Specific task", todo.title)
+        assertEquals(false, todo.completed)
+        assertEquals(1, todo.userId)
+        
+        // Проверить путь запроса
+        val request = mockWebServer.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/todos/$testId", request.path)
     }
 
     /**
@@ -107,13 +178,58 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test POST creates new todo and returns it with id`() = runTest {
-        // TODO: Создать новую задачу без ID
-        // TODO: Настроить ответ сервера с присвоенным ID
-        // TODO: Выполнить POST запрос
-        // TODO: Проверить успешность создания
-        // TODO: Проверить содержимое запроса и заголовки
+        // Arrange: Создать новую задачу без ID
+        val currentTime = System.currentTimeMillis()
+        val newTodo = TodoDto(
+            id = null, // Новая задача без ID
+            title = "New task",
+            completed = false,
+            userId = 1,
+            createdAt = currentTime,
+            updatedAt = currentTime
+        )
         
-        fail("Test not implemented - ДЗ: Реализуйте POST запрос создания задачи")
+        val createdTodo = TodoDto(
+            id = "101", // Сервер присваивает ID
+            title = "New task",
+            completed = false,
+            userId = 1,
+            createdAt = currentTime,
+            updatedAt = currentTime
+        )
+        
+        // Настроить ответ сервера с присвоенным ID
+        val response = MockResponse()
+            .setResponseCode(201) // Created
+            .setBody(gson.toJson(createdTodo))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
+        
+        // Act: Выполнить POST запрос
+        val result = apiService.createTodo(newTodo)
+        
+        // Assert: Проверить успешность создания
+        assertTrue(result.isSuccessful)
+        assertEquals(201, result.code())
+        val todo = result.body()
+        assertNotNull(todo)
+        assertEquals("101", todo!!.id)
+        assertEquals("New task", todo.title)
+        assertEquals(false, todo.completed)
+        assertEquals(1, todo.userId)
+        
+        // Проверить содержимое запроса и заголовки
+        val request = mockWebServer.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/todos", request.path)
+        assertEquals("application/json; charset=UTF-8", request.getHeader("Content-Type"))
+        
+        // Проверить тело запроса
+        val requestBody = request.body.readUtf8()
+        val sentTodo = gson.fromJson(requestBody, TodoDto::class.java)
+        assertEquals("New task", sentTodo.title)
+        assertEquals(false, sentTodo.completed)
+        assertEquals(1, sentTodo.userId)
     }
 
     /**
@@ -127,12 +243,50 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test PUT updates existing todo`() = runTest {
-        // TODO: Подготовить обновленные данные задачи
-        // TODO: Настроить ответ сервера
-        // TODO: Выполнить обновление
-        // TODO: Проверить результат и параметры запроса
+        // Arrange: Подготовить обновленные данные задачи
+        val todoId = "42"
+        val currentTime = System.currentTimeMillis()
+        val updatedTodo = TodoDto(
+            id = todoId,
+            title = "Updated task",
+            completed = true, // Изменили статус
+            userId = 1,
+            createdAt = currentTime,
+            updatedAt = currentTime
+        )
         
-        fail("Test not implemented - ДЗ: Реализуйте PUT запрос обновления задачи")
+        // Настроить ответ сервера
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(updatedTodo))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
+        
+        // Act: Выполнить обновление
+        val result = apiService.updateTodo(todoId, updatedTodo)
+        
+        // Assert: Проверить результат
+        assertTrue(result.isSuccessful)
+        assertEquals(200, result.code())
+        val todo = result.body()
+        assertNotNull(todo)
+        assertEquals(todoId, todo!!.id)
+        assertEquals("Updated task", todo.title)
+        assertEquals(true, todo.completed)
+        assertEquals(1, todo.userId)
+        
+        // Проверить параметры запроса
+        val request = mockWebServer.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/todos/$todoId", request.path)
+        assertEquals("application/json; charset=UTF-8", request.getHeader("Content-Type"))
+        
+        // Проверить тело запроса
+        val requestBody = request.body.readUtf8()
+        val sentTodo = gson.fromJson(requestBody, TodoDto::class.java)
+        assertEquals("Updated task", sentTodo.title)
+        assertEquals(true, sentTodo.completed)
+        assertEquals(todoId, sentTodo.id)
     }
 
     /**
@@ -146,11 +300,24 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test DELETE removes todo`() = runTest {
-        // TODO: Настроить ответ для удаления
-        // TODO: Выполнить удаление задачи
-        // TODO: Проверить код ответа и метод запроса
+        // Arrange: Настроить ответ для удаления
+        val todoId = "42"
+        val response = MockResponse()
+            .setResponseCode(204) // No Content - успешное удаление
+        mockWebServer.enqueue(response)
         
-        fail("Test not implemented - ДЗ: Реализуйте DELETE запрос удаления задачи")
+        // Act: Выполнить удаление задачи
+        val result = apiService.deleteTodo(todoId)
+        
+        // Assert: Проверить код ответа и метод запроса
+        assertTrue(result.isSuccessful)
+        assertEquals(204, result.code())
+        assertNull(result.body()) // No Content означает пустое тело
+        
+        // Проверить параметры запроса
+        val request = mockWebServer.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/todos/$todoId", request.path)
     }
 
     /**
@@ -164,11 +331,26 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test handles 404 error correctly`() = runTest {
-        // TODO: Настроить сервер для возврата ошибки 404
-        // TODO: Выполнить запрос несуществующего ресурса
-        // TODO: Проверить обработку ошибки
+        // Arrange: Настроить сервер для возврата ошибки 404
+        val nonExistentId = "999"
+        val response = MockResponse()
+            .setResponseCode(404)
+            .setBody("Not Found")
+        mockWebServer.enqueue(response)
         
-        fail("Test not implemented - ДЗ: Реализуйте обработку 404 ошибки")
+        // Act: Выполнить запрос несуществующего ресурса
+        val result = apiService.getTodoById(nonExistentId)
+        
+        // Assert: Проверить обработку ошибки
+        assertFalse(result.isSuccessful)
+        assertEquals(404, result.code())
+        assertNull(result.body())
+        assertNotNull(result.errorBody())
+        
+        // Проверить что запрос был отправлен правильно
+        val request = mockWebServer.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/todos/$nonExistentId", request.path)
     }
 
     /**
@@ -179,13 +361,32 @@ class Task2_MockWebServerTest {
      * Ожидаемый результат:
      * - При задержке ответа больше таймаута выбрасывается исключение
      */
-    @Test(expected = Exception::class)
+    @Test
     fun `test request timeout throws exception`() = runTest {
-        // TODO: Настроить клиент с коротким таймаутом
-        // TODO: Настроить сервер с длительной задержкой
-        // TODO: Выполнить запрос и дождаться исключения
+        // Arrange: Настроить сервер с длительной задержкой
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody("{}")
+            .setBodyDelay(2, TimeUnit.SECONDS) // Задержка больше таймаута клиента (1 сек)
+        mockWebServer.enqueue(response)
         
-        fail("Test not implemented - ДЗ: Реализуйте тест таймаута")
+        // Act & Assert: Выполнить запрос и дождаться исключения
+        try {
+            apiService.getAllTodos()
+            fail("Expected timeout exception was not thrown")
+        } catch (e: Exception) {
+            // Ожидаем исключение таймаута
+            assertTrue("Expected timeout-related exception", 
+                e.message?.contains("timeout") == true || 
+                e.message?.contains("timed out") == true ||
+                e is java.net.SocketTimeoutException
+            )
+        }
+        
+        // Проверить что запрос был отправлен
+        val request = mockWebServer.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/todos", request.path)
     }
 
     /**
@@ -199,11 +400,35 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test request contains correct headers`() = runTest {
-        // TODO: Выполнить любой запрос
-        // TODO: Получить информацию об отправленном запросе
-        // TODO: Проверить наличие необходимых заголовков
+        // Arrange: Настроить ответ сервера
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody("[]")
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
         
-        fail("Test not implemented - ДЗ: Реализуйте проверку заголовков")
+        // Act: Выполнить любой запрос
+        val result = apiService.getAllTodos()
+        
+        // Assert: Получить информацию об отправленном запросе
+        val request = mockWebServer.takeRequest()
+        
+        // Проверить наличие необходимых заголовков
+        val userAgent = request.getHeader("User-Agent")
+        assertNotNull("User-Agent header should be present", userAgent)
+        assertTrue("User-Agent should contain okhttp", 
+            userAgent?.contains("okhttp", ignoreCase = true) == true)
+        
+        val accept = request.getHeader("Accept")
+        // Retrofit автоматически добавляет Accept header основываясь на конверторе
+        // Для Gson конвертора ожидаем application/json
+        if (accept != null) {
+            assertTrue("Accept header should include application/json",
+                accept.contains("application/json", ignoreCase = true))
+        }
+        
+        // Проверить что запрос был успешным
+        assertTrue(result.isSuccessful)
     }
 
     /**
@@ -217,11 +442,56 @@ class Task2_MockWebServerTest {
      */
     @Test
     fun `test batch sync sends multiple todos`() = runTest {
-        // TODO: Создать несколько задач для синхронизации
-        // TODO: Настроить ответ сервера
-        // TODO: Выполнить batch синхронизацию
-        // TODO: Проверить результат
+        // Arrange: Создать несколько задач для синхронизации
+        val currentTime = System.currentTimeMillis()
+        val todosToSync = listOf(
+            TodoDto(id = null, title = "Batch task 1", completed = false, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = null, title = "Batch task 2", completed = true, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = null, title = "Batch task 3", completed = false, userId = 2, createdAt = currentTime, updatedAt = currentTime)
+        )
         
-        fail("Test not implemented - ДЗ: Реализуйте батчевую синхронизацию")
+        val syncedTodos = listOf(
+            TodoDto(id = "101", title = "Batch task 1", completed = false, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = "102", title = "Batch task 2", completed = true, userId = 1, createdAt = currentTime, updatedAt = currentTime),
+            TodoDto(id = "103", title = "Batch task 3", completed = false, userId = 2, createdAt = currentTime, updatedAt = currentTime)
+        )
+        
+        // Настроить ответ сервера
+        val response = MockResponse()
+            .setResponseCode(200)
+            .setBody(gson.toJson(syncedTodos))
+            .addHeader("Content-Type", "application/json")
+        mockWebServer.enqueue(response)
+        
+        // Act: Выполнить batch синхронизацию
+        val result = apiService.syncTodos(todosToSync)
+        
+        // Assert: Проверить результат
+        assertTrue(result.isSuccessful)
+        val resultTodos = result.body()
+        assertNotNull(resultTodos)
+        assertEquals(3, resultTodos!!.size)
+        
+        // Проверить что все задачи получили ID
+        assertEquals("101", resultTodos[0].id)
+        assertEquals("Batch task 1", resultTodos[0].title)
+        assertEquals("102", resultTodos[1].id)
+        assertEquals("Batch task 2", resultTodos[1].title)
+        assertEquals("103", resultTodos[2].id)
+        assertEquals("Batch task 3", resultTodos[2].title)
+        
+        // Проверить параметры запроса
+        val request = mockWebServer.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/todos/batch", request.path)
+        assertEquals("application/json; charset=UTF-8", request.getHeader("Content-Type"))
+        
+        // Проверить тело запроса
+        val requestBody = request.body.readUtf8()
+        val sentTodos = gson.fromJson(requestBody, Array<TodoDto>::class.java)
+        assertEquals(3, sentTodos.size)
+        assertEquals("Batch task 1", sentTodos[0].title)
+        assertEquals("Batch task 2", sentTodos[1].title)
+        assertEquals("Batch task 3", sentTodos[2].title)
     }
 }
