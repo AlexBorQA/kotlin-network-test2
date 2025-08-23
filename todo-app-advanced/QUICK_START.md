@@ -6,6 +6,14 @@
 
 ## SQLite Mock тестирование (7/7 тестов)
 
+# Сборка проекта
+
+```bash
+# Переключиться на ветку
+cd todo-app-advanced
+./gradlew clean build
+
+
 ```bash
 # Переключиться на ветку
 git checkout qa-kotlin-6-1
