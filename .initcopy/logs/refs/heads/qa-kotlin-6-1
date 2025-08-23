@@ -1,9 +1,0 @@
-0000000000000000000000000000000000000000 9b453d1a4fde081e8a877d89bee08f18fb3e2037 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755710876 +0500	branch: Created from 9b453d1
-9b453d1a4fde081e8a877d89bee08f18fb3e2037 10741d7b70a95e1310723d58198f8ea53b64b5e2 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755710984 +0500	commit: feat: qa-kotlin-6-1 branch - SQLite Mock testing only (7/7 tests)
-10741d7b70a95e1310723d58198f8ea53b64b5e2 7b9d8a1c92994a4769c1d9f617c3b55eac722012 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755711690 +0500	commit: feat: add Allure reporting to qa-kotlin-6-1 branch
-7b9d8a1c92994a4769c1d9f617c3b55eac722012 8061d74e5c9643fdf50036c990e8cad17bbeda65 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755712086 +0500	commit: docs: add comprehensive README and Quick Start guide
-8061d74e5c9643fdf50036c990e8cad17bbeda65 a6dcba514ec97b8243d70ad71ad0eacdd75fe91d Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755760929 +0500	commit: Fix Allure report viewing instructions with HTTP server
-a6dcba514ec97b8243d70ad71ad0eacdd75fe91d 5bfb11421efe7f97876aa86d12c4c730783e5d8c Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755772907 +0500	commit: Исправлена документация: добавлены рабочие команды просмотра Allure отчетов (порты 9040/9041)
-5bfb11421efe7f97876aa86d12c4c730783e5d8c d36341316c11fa54776f3d0fb3fea7ff6df52ffd Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755776668 +0500	commit: Корректировка документации.
-d36341316c11fa54776f3d0fb3fea7ff6df52ffd 68a7825f5a3688c2c4e894e6828092313bd7c8f4 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755881288 +0500	commit: Добавлены Allure отчеты SQLite в ветку qa-kotlin-6-1
-68a7825f5a3688c2c4e894e6828092313bd7c8f4 6f3dec0a5d8ef21cc9fd3cd8feaabebb4c57adb7 Alexey <113031830+AlexBorQA@users.noreply.github.com> 1755881543 +0500	commit: Синхронизация .gitignore с main
