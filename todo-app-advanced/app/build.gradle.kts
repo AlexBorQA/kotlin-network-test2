@@ -4,6 +4,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("io.qameta.allure") version "2.11.2"
 }
 
 android {
@@ -127,6 +128,12 @@ dependencies {
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("org.robolectric:robolectric:4.11.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    
+    // Allure reporting
+    testImplementation("io.qameta.allure:allure-kotlin-junit4:2.4.0")
+    testImplementation("io.qameta.allure:allure-kotlin-model:2.4.0")
+    testImplementation("io.qameta.allure:allure-kotlin-commons:2.4.0")
+    
     kspTest("com.google.dagger:hilt-compiler:2.50")
     
     // Android Testing

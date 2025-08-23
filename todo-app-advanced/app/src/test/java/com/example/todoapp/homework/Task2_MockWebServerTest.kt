@@ -3,6 +3,13 @@ package com.example.todoapp.homework
 import com.example.todoapp.data.api.TodoApiService
 import com.example.todoapp.data.model.TodoDto
 import com.google.gson.Gson
+import io.qameta.allure.kotlin.Allure.step
+import io.qameta.allure.kotlin.Description
+import io.qameta.allure.kotlin.Epic
+import io.qameta.allure.kotlin.Feature
+import io.qameta.allure.kotlin.Severity
+import io.qameta.allure.kotlin.SeverityLevel
+import io.qameta.allure.kotlin.Story
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -31,6 +38,8 @@ import java.util.concurrent.TimeUnit
  * 
  * Документация MockWebServer: https://github.com/square/okhttp/tree/master/mockwebserver
  */
+@Epic("ДЗ 6: Тестирование сетевого слоя")
+@Feature("MockWebServer API тестирование")
 // @Ignore("Убрать после реализации тестов из ДЗ")
 class Task2_MockWebServerTest {
 
@@ -81,6 +90,9 @@ class Task2_MockWebServerTest {
      * ВАЖНО: Сначала реализуйте инициализацию в setup()!
      */
     @Test
+    @Story("HTTP API операции")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Проверяет GET запрос для получения всех задач через MockWebServer")
     fun `test GET all todos returns list of tasks`() = runTest {
         // Arrange: Создать тестовые данные - список из 3 TodoDto
         val currentTime = System.currentTimeMillis()
