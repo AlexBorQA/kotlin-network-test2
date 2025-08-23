@@ -17,6 +17,13 @@ import com.example.todoapp.domain.model.Todo
 import com.example.todoapp.domain.model.TodoPriority
 import com.example.todoapp.domain.model.TodoSyncStatus
 import io.mockk.*
+import io.qameta.allure.kotlin.Allure.step
+import io.qameta.allure.kotlin.Description
+import io.qameta.allure.kotlin.Epic
+import io.qameta.allure.kotlin.Feature
+import io.qameta.allure.kotlin.Severity
+import io.qameta.allure.kotlin.SeverityLevel
+import io.qameta.allure.kotlin.Story
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -35,6 +42,8 @@ import java.util.Date
  * ВАЖНО: В этом задании используется настоящая in-memory база данных Room,
  * что позволяет тестировать реальную логику работы с БД без использования файлов.
  */
+@Epic("ДЗ 6: Тестирование сетевого слоя")
+@Feature("SQLite Mock тестирование")
 @RunWith(AndroidJUnit4::class)
 // @Ignore("Убрать после реализации тестов из ДЗ")
 class Task1_SQLiteMockTest {
@@ -91,6 +100,9 @@ class Task1_SQLiteMockTest {
      * - Проверить корректность преобразования Entity в Domain модели
      */
     @Test
+    @Story("CRUD операции с БД")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Проверяет получение всех задач из in-memory базы данных через Repository pattern")
     fun `test getAllTodos returns all tasks from database`() = runTest {
         // Arrange: Вставить 3 тестовые задачи в in-memory БД
         val task1 = TodoEntity(
