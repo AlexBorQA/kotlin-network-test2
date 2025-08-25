@@ -141,8 +141,8 @@ reports/
 
 ### 1. Клонирование и настройка
 ```bash
-git clone https://github.com/AlexBorQA/kotlin-network-testing.git
-cd kotlin-network-testing/todo-app-advanced
+git clone https://github.com/AlexBorQA/kotlin-network-test2.git
+cd kotlin-network-test2/todo-app-advanced
 ```
 
 ### 2. Тестирование SQLite (ветка qa-kotlin-6-1)
@@ -198,9 +198,9 @@ open http://localhost:9001
 
 ## 📞 Контакты и поддержка
 
-**Автор:** Senior QA Engineer  
+**Автор:** AlexBorQA 
 **Технологии:** Android, Kotlin, JUnit, MockK, Allure  
-**Репозиторий:** [kotlin-network-testing](https://github.com/AlexBorQA/kotlin-network-testing)
+**Репозиторий:** [kotlin-network-test2](https://github.com/AlexBorQA/kotlin-network-test2)
 
 ---
 
