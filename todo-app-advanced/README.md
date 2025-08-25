@@ -80,8 +80,8 @@ git checkout qa-kotlin-6-2
 
 ### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/AlexBorQA/kotlin-network-testing.git
-cd kotlin-network-testing/todo-app-advanced
+git clone https://github.com/AlexBorQA/kotlin-network-test2.git
+cd kotlin-network-test2/todo-app-advanced
 ```
 
 ### 2. Запуск SQLite тестов
